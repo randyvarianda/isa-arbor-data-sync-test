@@ -1,0 +1,40 @@
+name: Sync easyVerein data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Fetch + enrich
+        env:
+          EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
+        run: |
+          python fetch_members.py
+          python enrich_data.py
+
+      - name: Commit updated output
+        run: |
+          git add public/data.json public/images
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Auto-sync member data"
+          git push
