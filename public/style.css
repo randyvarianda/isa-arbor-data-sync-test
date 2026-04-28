@@ -1,0 +1,371 @@
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  color: #333;
+}
+
+.container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.filters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+#searchInput {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 20px;
+  background-color: #e0e0e0;
+  color: #555;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.tab-btn:hover {
+  background-color: #d0d0d0;
+}
+
+.tab-btn.active {
+  background-color: #2c3e50;
+  color: white;
+}
+
+#map {
+  height: 400px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.member-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s;
+  border-left: 5px solid #2c3e50;
+}
+
+.member-card.Firmenmitglied {
+  border-left-color: #c8f69b;
+}
+
+.member-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.member-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.member-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  margin-right: 15px;
+  border-radius: 4px;
+  background: #f9f9f9;
+}
+
+.member-info h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.1em;
+}
+
+.member-type {
+  font-size: 0.8em;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: bold;
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.member-card.Firmenmitglied .member-type {
+  background-color: #c8f69b;
+  color: #2c3e50;
+}
+
+.members-table {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.members-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  min-width: 900px;
+}
+
+.members-table th,
+.members-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.members-table th {
+  background: #f7f7f7;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.members-table tr:hover td {
+  background: #fafafa;
+}
+
+.name-cell {
+  min-width: 360px;
+}
+
+.type-cell {
+  width: 90px;
+  white-space: nowrap;
+}
+
+.city-cell {
+  min-width: 170px;
+}
+
+.contact-cell {
+  width: 200px;
+}
+
+.name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-wrap {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #f6f6f6;
+}
+
+.table-logo-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b5b5b5;
+  font-weight: 800;
+}
+
+.name-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name-link {
+  color: #1f6f4a;
+  text-decoration: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.name-link:hover {
+  text-decoration: underline;
+}
+
+.name-text {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.external-svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+}
+
+.type-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: #eef2f5;
+  color: #2c3e50;
+}
+
+.type-pill.firma {
+  background: #c8f69b;
+  color: #2c3e50;
+}
+
+.type-pill.einzel {
+  background: #eef2f5;
+  color: #2c3e50;
+}
+
+.contact-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.contact-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f6f4a;
+  background: rgba(31, 111, 74, 0.08);
+  text-decoration: none;
+}
+
+.contact-icon:hover {
+  background: rgba(31, 111, 74, 0.14);
+}
+
+.contact-icon.disabled {
+  opacity: 0.35;
+}
+
+.contact-svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 640px) {
+  #map {
+    height: 280px;
+  }
+
+  .members-table {
+    border-radius: 0;
+  }
+
+  .members-table th,
+  .members-table td {
+    padding: 12px 12px;
+    font-size: 13px;
+  }
+
+  .members-table table {
+    min-width: 760px;
+  }
+}
+.member-details p {
+  margin: 5px 0;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-details a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.member-details a:hover {
+  text-decoration: underline;
+}
+
+.icon {
+  width: 16px;
+  text-align: center;
+  opacity: 0.6;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 30px;
+  padding-bottom: 20px;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  border-radius: 4px;
+  min-width: 35px;
+}
+
+.page-btn:hover {
+  background: #f0f0f0;
+}
+
+.page-btn.active {
+  background: #2c3e50;
+  color: white;
+  border-color: #2c3e50;
+}
+
+.page-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
