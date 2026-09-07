@@ -1,7 +1,8 @@
+import os
 import requests
 import json
 
-API_TOKEN = "9087f914ada0489b766a4301cfbe33992452248f"
+API_TOKEN = os.environ.get("EASYVEREIN_API_TOKEN") or os.environ.get("API_TOKEN") or "9087f914ada0489b766a4301cfbe33992452248f"
 BASE_URL = "https://easyverein.com/api/v2.0"
 HEADERS = {
     "Authorization": f"Bearer {API_TOKEN}",

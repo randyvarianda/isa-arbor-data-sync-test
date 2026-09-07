@@ -1,11 +1,11 @@
+import os
 import json
 import requests
-import os
 import time
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
-API_TOKEN = "9087f914ada0489b766a4301cfbe33992452248f"
+API_TOKEN = os.environ.get("EASYVEREIN_API_TOKEN") or os.environ.get("API_TOKEN") or "9087f914ada0489b766a4301cfbe33992452248f"
 HEADERS = {
     "Authorization": f"Bearer {API_TOKEN}",
     "Content-Type": "application/json"
