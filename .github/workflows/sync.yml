@@ -42,21 +42,51 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Backup existing data files (before API calls)
+        id: backup
+        run: |
+          mkdir -p /tmp/data-backup
+          cp -v members_full.json contact_details.json members_raw.json public/data.json /tmp/data-backup/ 2>/dev/null || true
+          ls -la /tmp/data-backup/ || true
+
       - name: Fetch members + contact details from easyVerein
         env:
           EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
+        id: fetch
+        continue-on-error: true
         run: |
           if [ -z "$EASYVEREIN_API_TOKEN" ]; then
-            echo "::warning::EASYVEREIN_API_TOKEN secret is empty — skipping live fetch, using existing members_full.json"
-          else
-            python fetch_members.py
+            echo "::warning::EASYVEREIN_API_TOKEN secret is empty — skipping live fetch, using existing members_full.json on disk"
+            echo "skip_fetch=1" >> $GITHUB_OUTPUT
+            exit 0
           fi
+          set -o pipefail
+          FETCH_OUT=$(python -u fetch_members.py 2>&1 | tee /tmp/fetch.log)
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "$FETCH_OUT"
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "::warning::fetch_members.py failed (exit $EXIT_CODE). Restoring backup data files and moving on."
+            cp -v /tmp/data-backup/members_full.json members_full.json 2>/dev/null || true
+            cp -v /tmp/data-backup/contact_details.json contact_details.json 2>/dev/null || true
+            cp -v /tmp/data-backup/members_raw.json members_raw.json 2>/dev/null || true
+          fi
+          echo "skip_fetch=0" >> $GITHUB_OUTPUT
 
       - name: Enrich data (geocode, images, website, types) → public/data.json
         env:
           EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
+          MIN_ENRICH_OUTPUT_ROWS: ${{ env.MIN_DATA_ROWS }}
+        id: enrich
+        continue-on-error: true
         run: |
-          python enrich_data.py
+          set -o pipefail
+          ENRICH_OUT=$(python -u enrich_data.py 2>&1 | tee /tmp/enrich.log)
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "$ENRICH_OUT"
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "::warning::enrich_data.py failed (exit $EXIT_CODE). Restoring backup public/data.json."
+            cp -v /tmp/data-backup/public/data.json public/data.json 2>/dev/null || true
+          fi
 
       - name: Validate output (safety gate — abort on empty/bad data)
         env:
