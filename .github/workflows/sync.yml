@@ -1,40 +1,84 @@
-name: Sync easyVerein data
+name: Sync Member Data & Deploy
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "public/**"
+      - ".github/workflows/**"
+      - "*.py"
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 3 * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  MIN_DATA_ROWS: 100
 
 jobs:
-  sync:
+  sync-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Fetch + enrich
+      - name: Fetch members + contact details from easyVerein
         env:
           EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
         run: |
-          python fetch_members.py
+          if [ -z "$EASYVEREIN_API_TOKEN" ]; then
+            echo "::warning::EASYVEREIN_API_TOKEN secret is empty — skipping live fetch, using existing members_full.json"
+          else
+            python fetch_members.py
+          fi
+
+      - name: Enrich data (geocode, images, website, types) → public/data.json
+        env:
+          EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
+        run: |
           python enrich_data.py
 
-      - name: Commit updated output
+      - name: Validate output (safety gate — abort on empty/bad data)
+        env:
+          MIN_DATA_ROWS: ${{ env.MIN_DATA_ROWS }}
         run: |
-          git add public/data.json public/images
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "Auto-sync member data"
-          git push
+          python validate_data.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: sync-and-deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
