@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import requests
 import time
@@ -10,6 +11,7 @@ HEADERS = {
     "Authorization": f"Bearer {API_TOKEN}",
     "Content-Type": "application/json"
 }
+MIN_ENRICH_OUTPUT_ROWS = int(os.environ.get("MIN_ENRICH_OUTPUT_ROWS", "100"))
 
 # Member Group IDs
 GROUP_EINZEL = 20876624
@@ -85,11 +87,43 @@ def fetch_groups(member_id):
 def process_members(limit=20):
     with open("members_full.json", "r") as f:
         members = json.load(f)
-    
-    # Filter out deleted members or invalid ones if necessary
-    active_members = [m for m in members if not m.get("_deleteAfterDate")]
-    
-    # Limit for demo
+
+    if not isinstance(members, list):
+        print(f"::error::members_full.json is not a list (got {type(members).__name__})")
+        sys.exit(1)
+
+    print(f"Loaded {len(members)} entries from members_full.json")
+
+    try:
+        with open("contact_details.json", "r") as f:
+            cd_list = json.load(f)
+        contact_lookup = {
+            c["id"]: c
+            for c in (cd_list if isinstance(cd_list, list) else [])
+            if isinstance(c, dict) and "id" in c
+        }
+        print(f"Loaded {len(contact_lookup)} contact-details rows for fallback merging")
+    except OSError:
+        contact_lookup = {}
+        print("No contact_details.json found — using what is embedded in members_full.json")
+
+    for m in members:
+        if not isinstance(m, dict):
+            continue
+        cd = m.get("contactDetails")
+        if isinstance(cd, str) and cd:
+            try:
+                cid = int(cd.rstrip("/").split("/")[-1])
+            except (ValueError, IndexError):
+                continue
+            if cid in contact_lookup:
+                m["contactDetails"] = contact_lookup[cid]
+            else:
+                m["contactDetails"] = {}
+
+    active_members = [m for m in members if isinstance(m, dict) and not m.get("_deleteAfterDate")]
+    print(f"Active members (after removing deleted): {len(active_members)}")
+
     if limit:
         active_members = active_members[:limit]
         
@@ -440,10 +474,64 @@ def process_members(limit=20):
         }
         
         enriched_data.append(enriched_member)
-        
-    with open("public/data.json", "w") as f:
-        json.dump(enriched_data, f, indent=4)
-    print("Enrichment complete. Data saved to public/data.json")
+
+    _safe_write_public_data(enriched_data)
+    print(f"Enrichment complete. public/data.json has {len(enriched_data)} rows.")
+
+
+def _safe_write_public_data(new_data):
+    """Never overwrite public/data.json if output is empty or suddenly tiny.
+
+    If a previous public/data.json exists and new data is bad, keep the old one.
+    """
+    out_path = os.path.join("public", "data.json")
+    prev_len = 0
+    if os.path.exists(out_path):
+        try:
+            with open(out_path, "r") as f:
+                prev = json.load(f)
+            if isinstance(prev, list):
+                prev_len = len(prev)
+        except Exception:
+            prev_len = 0
+
+    if not isinstance(new_data, list):
+        print(f"::error::enrich_data.py produced non-list output ({type(new_data).__name__}). Refusing to write.")
+        sys.exit(10)
+
+    new_len = len(new_data)
+    print(f"About to write public/data.json: new={new_len} rows, previous on disk={prev_len} rows, MIN_ENRICH_OUTPUT_ROWS={MIN_ENRICH_OUTPUT_ROWS}")
+
+    if new_len == 0:
+        msg = (
+            "::error::enrich_data.py produced 0 rows. Refusing to overwrite public/data.json "
+            "(kept previous file with {} rows). Likely cause: members_full.json is empty, or the "
+            "API fetch earlier failed and left bad data on disk. Check upstream 'fetch_members' step."
+        ).format(prev_len)
+        print(msg)
+        sys.exit(11)
+
+    if prev_len > 0 and new_len < prev_len * 0.5:
+        print(
+            f"::error::Refusing to write public/data.json — new rows {new_len} is <50% of previous "
+            f"{prev_len} rows. Keeping previous data.json file to avoid partial/truncated deploy."
+        )
+        sys.exit(12)
+
+    if new_len < MIN_ENRICH_OUTPUT_ROWS and prev_len == 0:
+        print(
+            f"::error::Refusing to write public/data.json — {new_len} rows and no previous cache file "
+            f"(need MIN_ENRICH_OUTPUT_ROWS={MIN_ENRICH_OUTPUT_ROWS})."
+        )
+        sys.exit(13)
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    tmp = out_path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(new_data, f, indent=4)
+    os.replace(tmp, out_path)
+    print(f"Wrote {new_len} rows to public/data.json")
+
 
 if __name__ == "__main__":
-    process_members(limit=None) # Process ALL members
+    process_members(limit=None)
