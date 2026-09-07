@@ -27,9 +27,45 @@ env:
 jobs:
   sync-and-deploy:
     runs-on: ubuntu-latest
+    outputs:
+      artifact_path: ${{ steps.pick_artifact.outputs.artifact_path }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: "Snapshot: committed public/ + data files (before API calls)"
+        id: snapshot
+        run: |
+          set -e
+          COMMITTED_PUBLIC=/tmp/committed_public
+          COMMITTED_DATA=/tmp/committed_data
+          rm -rf "$COMMITTED_PUBLIC" "$COMMITTED_DATA"
+          cp -R public "$COMMITTED_PUBLIC"
+          mkdir -p "$COMMITTED_DATA"
+          for f in members_full.json contact_details.json members_raw.json; do
+            [ -f "$f" ] && cp -v "$f" "$COMMITTED_DATA/$f" || true
+          done
+          echo "--- committed public/data.json row count ---"
+          python - <<'PY'
+          import json, os
+          p = "/tmp/committed_public/data.json"
+          if os.path.exists(p):
+            try:
+              d = json.load(open(p))
+              n = len(d) if isinstance(d, list) else -1
+              print(f"COMMITTED_DATA_JSON_ROWS={n}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+                  g.write(f"committed_rows={n}\n")
+            except Exception as e:
+              print(f"invalid committed data.json: {e}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+                  g.write("committed_rows=-1\n")
+          else:
+              print("no committed public/data.json")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+                  g.write("committed_rows=-1\n")
+          PY
+          echo "snapshot.snapshot.committed_rows=${{ steps.snapshot.outputs.committed_rows }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,13 +78,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Backup existing data files (before API calls)
-        id: backup
-        run: |
-          mkdir -p /tmp/data-backup
-          cp -v members_full.json contact_details.json members_raw.json public/data.json /tmp/data-backup/ 2>/dev/null || true
-          ls -la /tmp/data-backup/ || true
-
       - name: Fetch members + contact details from easyVerein
         env:
           EASYVEREIN_API_TOKEN: ${{ secrets.EASYVEREIN_API_TOKEN }}
@@ -56,21 +85,20 @@ jobs:
         continue-on-error: true
         run: |
           if [ -z "$EASYVEREIN_API_TOKEN" ]; then
-            echo "::warning::EASYVEREIN_API_TOKEN secret is empty — skipping live fetch, using existing members_full.json on disk"
+            echo "::warning::EASYVEREIN_API_TOKEN secret is empty — skipping live fetch, using committed snapshot"
             echo "skip_fetch=1" >> $GITHUB_OUTPUT
             exit 0
           fi
           set -o pipefail
-          FETCH_OUT=$(python -u fetch_members.py 2>&1 | tee /tmp/fetch.log)
+          python -u fetch_members.py 2>&1 | tee /tmp/fetch.log
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "$FETCH_OUT"
+          echo "fetch_exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
           if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "::warning::fetch_members.py failed (exit $EXIT_CODE). Restoring backup data files and moving on."
-            cp -v /tmp/data-backup/members_full.json members_full.json 2>/dev/null || true
-            cp -v /tmp/data-backup/contact_details.json contact_details.json 2>/dev/null || true
-            cp -v /tmp/data-backup/members_raw.json members_raw.json 2>/dev/null || true
+            echo "::warning::fetch_members.py failed (exit $EXIT_CODE). Restoring committed data snapshot (members_full/contact_details/members_raw)."
+            for f in members_full.json contact_details.json members_raw.json; do
+              [ -f "/tmp/committed_data/$f" ] && cp -v "/tmp/committed_data/$f" "$f" || true
+            done
           fi
-          echo "skip_fetch=0" >> $GITHUB_OUTPUT
 
       - name: Enrich data (geocode, images, website, types) → public/data.json
         env:
@@ -80,19 +108,52 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          ENRICH_OUT=$(python -u enrich_data.py 2>&1 | tee /tmp/enrich.log)
+          python -u enrich_data.py 2>&1 | tee /tmp/enrich.log
           EXIT_CODE=${PIPESTATUS[0]}
-          echo "$ENRICH_OUT"
+          echo "enrich_exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
           if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "::warning::enrich_data.py failed (exit $EXIT_CODE). Restoring backup public/data.json."
-            cp -v /tmp/data-backup/public/data.json public/data.json 2>/dev/null || true
+            echo "::warning::enrich_data.py failed (exit $EXIT_CODE). Restoring committed public/data.json snapshot so deploy still succeeds."
+            cp -v /tmp/committed_public/data.json public/data.json 2>/dev/null || true
           fi
 
-      - name: Validate output (safety gate — abort on empty/bad data)
+      - name: Validate output (safety gate — FAIL WORKFLOW on bad data)
         env:
           MIN_DATA_ROWS: ${{ env.MIN_DATA_ROWS }}
+        id: validate
         run: |
-          python validate_data.py
+          set -o pipefail
+          python -u validate_data.py 2>&1 | tee /tmp/validate.log
+
+      - name: "Pick artifact: live-enriched if OK, else committed snapshot (defensive)"
+        id: pick_artifact
+        run: |
+          set -e
+          LIVE_OK=0
+          if [ -f public/data.json ]; then
+            LIVE_ROWS=$(python -c "import json; d=json.load(open('public/data.json')); print(len(d) if isinstance(d, list) else -1)" 2>/dev/null || echo -1)
+            echo "live rows = $LIVE_ROWS"
+            if [ "$LIVE_ROWS" -ge "${{ env.MIN_DATA_ROWS }}" ]; then
+              LIVE_OK=1
+            fi
+          fi
+          COMMITTED_ROWS=${{ steps.snapshot.outputs.committed_rows }}
+          echo "committed rows = $COMMITTED_ROWS"
+          ARTIFACT_SRC=""
+          if [ "$LIVE_OK" -eq 1 ]; then
+            ARTIFACT_SRC="$(pwd)/public"
+            echo "artifact: using LIVE-enriched public/ ($LIVE_ROWS rows)"
+          elif [ "$COMMITTED_ROWS" -ge "${{ env.MIN_DATA_ROWS }}" ]; then
+            ARTIFACT_SRC="/tmp/committed_public"
+            echo "::warning::artifact: using COMMITTED snapshot ($COMMITTED_ROWS rows) — live fetch/enrich did not produce valid output, but site still deploys your last good commit."
+          else
+            echo "::error::Neither live-enriched public/data.json nor committed snapshot have >=${{ env.MIN_DATA_ROWS }} rows. Cannot deploy safely."
+            echo "       Commit a valid public/data.json (354 rows from your local Mac) to main, then re-run this workflow."
+            exit 1
+          fi
+          echo "artifact_path=$ARTIFACT_SRC" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_SRC=$ARTIFACT_SRC"
+          echo "artifact data.json rows:"
+          python -c "import json; d=json.load(open('$ARTIFACT_SRC/data.json')); print(len(d))"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -100,7 +161,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: ${{ steps.pick_artifact.outputs.artifact_path }}
 
   deploy:
     needs: sync-and-deploy
