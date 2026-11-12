@@ -26,7 +26,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Filter Logic
   const searchInput = document.getElementById("searchInput");
   const tabBtns = document.querySelectorAll(".tab-btn");
+  const showExitedInput = document.getElementById("showExited");
   let currentType = "all";
+
+  // "2025-12-31" -> "31.12.2025"
+  function formatExitDate(iso) {
+    const [y, m, d] = String(iso ?? "").split("-");
+    return y && m && d ? `${d}.${m}.${y}` : "";
+  }
 
   // Pagination State
   let currentPage = 1;
@@ -53,7 +60,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // Filter Type
       const matchesType = currentType === "all" || member.type === currentType;
 
-      return matchesSearch && matchesType;
+      const matchesExited = showExitedInput.checked || !member.exited;
+
+      return matchesSearch && matchesType && matchesExited;
     });
 
     // Update State
@@ -66,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   searchInput.addEventListener("input", filterMembers);
+  showExitedInput.addEventListener("change", filterMembers);
 
   // Tab Click Handlers
   tabBtns.forEach((btn) => {
@@ -173,7 +183,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const typePill = `<span class="type-pill ${
           isFirma ? "firma" : "einzel"
         }">${typeLabel}</span>${
-          member.exited ? ` <span class="type-pill exited">Ausgetreten</span>` : ""
+          member.exited
+            ? ` <span class="type-pill exited">Ausgetreten${
+                member.exitDate ? ` ${escapeHtml(formatExitDate(member.exitDate))}` : ""
+              }</span>`
+            : ""
         }`;
 
         const phoneIcon = phone
@@ -451,7 +465,11 @@ document.addEventListener("DOMContentLoaded", () => {
         <div style="min-width:220px;">
           <div style="font-weight:700;">${name}</div>
           <div style="margin-top:2px;opacity:0.75;font-size:12px;">${type}${
-            member?.exited ? " · Ausgetreten" : ""
+            member?.exited
+              ? ` · Ausgetreten${
+                  member.exitDate ? ` ${escapeHtml(formatExitDate(member.exitDate))}` : ""
+                }`
+              : ""
           }</div>
           ${addressHtml}
           ${phoneHtml}

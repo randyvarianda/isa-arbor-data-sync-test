@@ -474,6 +474,7 @@ def process_members(limit=20):
             "name": contact.get('companyName') if is_company and contact.get('companyName') else contact.get('name'),
             "type": member_type,
             "exited": has_left(member),
+            "exitDate": (member.get("resignationDate") or "")[:10] if has_left(member) else None,
             "address": {
                 "street": street,
                 "zip": zip_code,
