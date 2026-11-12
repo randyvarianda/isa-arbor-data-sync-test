@@ -46,27 +46,6 @@ body {
   font-weight: 600;
 }
 
-.exited-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 20px;
-  background-color: #e0e0e0;
-  color: #555;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-}
-
-.exited-toggle input {
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
 .tab-btn:hover {
   background-color: #d0d0d0;
 }
@@ -281,12 +260,6 @@ body {
 .type-pill.einzel {
   background: #eef2f5;
   color: #2c3e50;
-}
-
-.type-pill.exited {
-  margin-top: 4px;
-  background: #fde2e1;
-  color: #8a1c1c;
 }
 
 .contact-icons {

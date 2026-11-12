@@ -125,17 +125,19 @@ def process_members(limit=20):
     active_members = [m for m in members if isinstance(m, dict) and not m.get("_deleteAfterDate")]
     print(f"Active members (after removing deleted): {len(active_members)}")
 
-    # Flag members whose leaving date (easyVerein "resignationDate") has passed.
-    # They stay listed but are marked as exited; future leaving dates are not flagged yet.
+    # Exclude members whose leaving date (easyVerein "resignationDate") has passed,
+    # so their data never reaches the public site. Future leaving dates stay listed until then.
     today = date.today().isoformat()
     if not any("resignationDate" in m for m in active_members):
-        print("::warning::No 'resignationDate' field in member data — exited members cannot be flagged")
+        print("::warning::No 'resignationDate' field in member data — exited members cannot be excluded")
 
     def has_left(m):
         leave = (m.get("resignationDate") or "")[:10]
         return bool(leave) and leave <= today
 
-    print(f"Members with a past leaving date (flagged as exited): {sum(has_left(m) for m in active_members)}")
+    exited_count = sum(has_left(m) for m in active_members)
+    active_members = [m for m in active_members if not has_left(m)]
+    print(f"Active members (after excluding {exited_count} with a past leaving date): {len(active_members)}")
 
     if limit:
         active_members = active_members[:limit]
@@ -473,8 +475,6 @@ def process_members(limit=20):
             "id": member['id'],
             "name": contact.get('companyName') if is_company and contact.get('companyName') else contact.get('name'),
             "type": member_type,
-            "exited": has_left(member),
-            "exitDate": (member.get("resignationDate") or "")[:10] if has_left(member) else None,
             "address": {
                 "street": street,
                 "zip": zip_code,
