@@ -3,7 +3,6 @@ import sys
 import json
 import requests
 import time
-from datetime import date
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
@@ -125,19 +124,14 @@ def process_members(limit=20):
     active_members = [m for m in members if isinstance(m, dict) and not m.get("_deleteAfterDate")]
     print(f"Active members (after removing deleted): {len(active_members)}")
 
-    # Exclude members whose leaving date (easyVerein "resignationDate") has passed,
-    # so their data never reaches the public site. Future leaving dates stay listed until then.
-    today = date.today().isoformat()
+    # Exclude every member with a leaving date (easyVerein "resignationDate"), past or future:
+    # members who have exited or given notice must not appear on the public site.
     if not any("resignationDate" in m for m in active_members):
         print("::warning::No 'resignationDate' field in member data — exited members cannot be excluded")
 
-    def has_left(m):
-        leave = (m.get("resignationDate") or "")[:10]
-        return bool(leave) and leave <= today
-
-    exited_count = sum(has_left(m) for m in active_members)
-    active_members = [m for m in active_members if not has_left(m)]
-    print(f"Active members (after excluding {exited_count} with a past leaving date): {len(active_members)}")
+    exited_count = sum(1 for m in active_members if m.get("resignationDate"))
+    active_members = [m for m in active_members if not m.get("resignationDate")]
+    print(f"Active members (after excluding {exited_count} with a leaving date): {len(active_members)}")
 
     if limit:
         active_members = active_members[:limit]

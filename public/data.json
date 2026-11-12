@@ -833,25 +833,6 @@
         "image": null
     },
     {
-        "id": 1203630,
-        "name": "Baum-Welt",
-        "type": "Firmenmitglied",
-        "address": {
-            "street": "Brunnenstr.15",
-            "zip": "42105",
-            "city": "Wuppertal",
-            "country": "Deutschland"
-        },
-        "coords": {
-            "lat": 51.2611954,
-            "lon": 7.1392065
-        },
-        "phone": "",
-        "email": "kontakt@baum-welt.de",
-        "website": "http://www.baum-welt.de",
-        "image": "images/1203630.png"
-    },
-    {
         "id": 1203631,
         "name": "Baumfalke",
         "type": "Firmenmitglied",
@@ -3846,25 +3827,6 @@
         "image": null
     },
     {
-        "id": 1333451,
-        "name": "Hanna Purps",
-        "type": "Einzelmitglied",
-        "address": {
-            "street": "Petrosilienstr. 8",
-            "zip": "37133",
-            "city": "Friedland",
-            "country": "Deutschland"
-        },
-        "coords": {
-            "lat": 51.4299369,
-            "lon": 9.9288613
-        },
-        "phone": "0151-50638089",
-        "email": "hanna.purps.baumpflege@posteo.de",
-        "website": null,
-        "image": null
-    },
-    {
         "id": 1335655,
         "name": "Lukas B\u00fcchner",
         "type": "Einzelmitglied",
@@ -5032,25 +4994,6 @@
         "email": "",
         "website": null,
         "image": "images/4377999.png"
-    },
-    {
-        "id": 4384974,
-        "name": "Baumpflege & Sachverst\u00e4ndigenb\u00fcro - Hillenmeyer",
-        "type": "Firmenmitglied",
-        "address": {
-            "street": "Fritz-Carry-Stra\u00dfe 16,",
-            "zip": "86637",
-            "city": "Wertingen",
-            "country": "Deutschland"
-        },
-        "coords": {
-            "lat": 48.543916,
-            "lon": 10.6753118
-        },
-        "phone": "",
-        "email": "",
-        "website": null,
-        "image": "images/4384974.png"
     },
     {
         "id": 5244345,
