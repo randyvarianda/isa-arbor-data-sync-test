@@ -3,6 +3,7 @@ import sys
 import json
 import requests
 import time
+from datetime import date
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
@@ -123,6 +124,18 @@ def process_members(limit=20):
 
     active_members = [m for m in members if isinstance(m, dict) and not m.get("_deleteAfterDate")]
     print(f"Active members (after removing deleted): {len(active_members)}")
+
+    # Flag members whose leaving date (easyVerein "resignationDate") has passed.
+    # They stay listed but are marked as exited; future leaving dates are not flagged yet.
+    today = date.today().isoformat()
+    if not any("resignationDate" in m for m in active_members):
+        print("::warning::No 'resignationDate' field in member data — exited members cannot be flagged")
+
+    def has_left(m):
+        leave = (m.get("resignationDate") or "")[:10]
+        return bool(leave) and leave <= today
+
+    print(f"Members with a past leaving date (flagged as exited): {sum(has_left(m) for m in active_members)}")
 
     if limit:
         active_members = active_members[:limit]
@@ -460,6 +473,7 @@ def process_members(limit=20):
             "id": member['id'],
             "name": contact.get('companyName') if is_company and contact.get('companyName') else contact.get('name'),
             "type": member_type,
+            "exited": has_left(member),
             "address": {
                 "street": street,
                 "zip": zip_code,

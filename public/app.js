@@ -172,7 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const typeLabel = isFirma ? "Firma" : "Einzel";
         const typePill = `<span class="type-pill ${
           isFirma ? "firma" : "einzel"
-        }">${typeLabel}</span>`;
+        }">${typeLabel}</span>${
+          member.exited ? ` <span class="type-pill exited">Ausgetreten</span>` : ""
+        }`;
 
         const phoneIcon = phone
           ? `<a class="contact-icon" href="tel:${escapeHtml(
@@ -448,7 +450,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return `
         <div style="min-width:220px;">
           <div style="font-weight:700;">${name}</div>
-          <div style="margin-top:2px;opacity:0.75;font-size:12px;">${type}</div>
+          <div style="margin-top:2px;opacity:0.75;font-size:12px;">${type}${
+            member?.exited ? " · Ausgetreten" : ""
+          }</div>
           ${addressHtml}
           ${phoneHtml}
           ${emailHtml}

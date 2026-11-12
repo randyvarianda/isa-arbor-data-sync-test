@@ -262,6 +262,12 @@ body {
   color: #2c3e50;
 }
 
+.type-pill.exited {
+  margin-top: 4px;
+  background: #fde2e1;
+  color: #8a1c1c;
+}
+
 .contact-icons {
   display: flex;
   align-items: center;
